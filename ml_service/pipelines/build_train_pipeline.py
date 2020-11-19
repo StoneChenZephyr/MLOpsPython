@@ -50,7 +50,7 @@ def main():
     run_config = RunConfiguration(conda_dependencies=CondaDependencies.create(
         conda_packages=['numpy', 'pandas',
                         'scikit-learn', 'tensorflow', 'keras'],
-        pip_packages=['azure', 'azureml-core',
+        pip_packages=['azureml-core',
                       'azure-storage',
                       'azure-storage-blob'])
     )
