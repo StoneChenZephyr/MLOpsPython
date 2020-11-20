@@ -1,57 +1,38 @@
-"""
-Copyright (C) Microsoft Corporation. All rights reserved.​
- ​
-Microsoft Corporation (“Microsoft”) grants you a nonexclusive, perpetual,
-royalty-free right to use, copy, and modify the software code provided by us
-("Software Code"). You may not sublicense the Software Code or any use of it
-(except to your affiliates and to vendors to perform work on your behalf)
-through distribution, network access, service agreement, lease, rental, or
-otherwise. This license does not purport to express any claim of ownership over
-data you may have shared with Microsoft in the creation of the Software Code.
-Unless applicable law gives you more rights, Microsoft reserves all other
-rights not expressly granted herein, whether by implication, estoppel or
-otherwise. ​
- ​
-THE SOFTWARE CODE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-MICROSOFT OR ITS LICENSORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THE SOFTWARE CODE, EVEN IF ADVISED OF THE
-POSSIBILITY OF SUCH DAMAGE.
-"""
-import json
-import numpy
-from azureml.core.model import Model
 import joblib
+import numpy as np
+import os
+
+from inference_schema.schema_decorators import input_schema, output_schema
+from inference_schema.parameter_types.numpy_parameter_type import NumpyParameterType
 
 
+# The init() method is called once, when the web service starts up.
+#
+# Typically you would deserialize the model file, as shown here using joblib,
+# and store it in a global variable so your run() method can access it later.
 def init():
     global model
 
-    # load the model from file into a global object
-    model_path = Model.get_model_path(
-        model_name="sklearn_regression_model.pkl")
+    # The AZUREML_MODEL_DIR environment variable indicates
+    # a directory containing the model file you registered.
+    model_filename = 'sklearn_regression_model.pkl'
+    model_path = os.path.join(os.environ['AZUREML_MODEL_DIR'], model_filename)
+
     model = joblib.load(model_path)
 
 
-def run(raw_data):
-    try:
-        data = json.loads(raw_data)["data"]
-        data = numpy.array(data)
-        result = model.predict(data)
-        return json.dumps({"result": result.tolist()})
-    except Exception as e:
-        result = str(e)
-        return json.dumps({"error": result})
+# The run() method is called each time a request is made to the scoring API.
+#
+# Shown here are the optional input_schema and output_schema decorators
+# from the inference-schema pip package. Using these decorators on your
+# run() method parses and validates the incoming payload against
+# the example input you provide here. This will also generate a Swagger
+# API document for your web service.
+@input_schema('data', NumpyParameterType(np.array([[0.1, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7, 7.8, 8.9, 9.0]])))
+@output_schema(NumpyParameterType(np.array([4429.929236457418])))
+def run(data):
+    # Use the model object loaded by init().
+    result = model.predict(data)
 
-
-if __name__ == "__main__":
-    # Test scoring
-    init()
-    test_row = '{"data":[[1,2,3,4,5,6,7,8,9,10],[10,9,8,7,6,5,4,3,2,1]]}'
-    prediction = run(test_row)
-    print("Test result: ", prediction)
+    # You can return any JSON-serializable object.
+    return result.tolist()
