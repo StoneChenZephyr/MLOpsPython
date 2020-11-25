@@ -48,8 +48,8 @@ def main():
         print(aml_compute_cpu)
 
     run_config = RunConfiguration(conda_dependencies=CondaDependencies.create(
-        conda_packages=['numpy', 'pandas',
-                        'scikit-learn', 'tensorflow', 'keras'])
+        conda_packages=['numpy==1.14.5', 'pandas==0.23.1',
+                        'scikit-learn==0.21.3', 'tensorflow', 'keras'])
     )
     run_config.environment.docker.enabled = True
 
